@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOGO GitHub Pages Deployer v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fffbe6; --card: #ffffff; --text: #111111; --muted: #6b7280;
+    --accent: #86efac; --accent2: #facc15; --danger: #fca5a5; --border: #111111;
+    --shadow: #111111; --input: #ffffff; --soft: #f5f5f0;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8;
+    --accent: #4ade80; --accent2: #facc15; --danger: #f87171; --border: #000000;
+    --shadow: #000000; --input: #0f172a; --soft: #111827;
+  }
+  [data-theme="sky"] {
+    --bg: #e0f2fe; --card: #ffffff; --text: #0c4a6e; --muted: #64748b;
+    --accent: #7dd3fc; --accent2: #fde047; --danger: #fca5a5; --border: #0c4a6e;
+    --shadow: #0c4a6e; --input: #f0f9ff; --soft: #f0f9ff;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',system-ui,sans-serif; }
+  body { background:var(--bg); color:var(--text); padding:20px 12px; display:flex; justify-content:center; min-height:100vh; transition:background .4s; }
+  .hide { display:none !important; }
+
+  /* ---- Setup ---- */
+  #setupScreen { position:fixed; inset:0; z-index:9000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; overflow-y:auto; }
+  #setupScreen.leaving { animation: fadeOut .4s forwards; }
+  .title-big { font-size:2.2rem; font-weight:900; text-align:center; letter-spacing:-1px; animation: bounceIn .8s both; }
+  .title-big .hl { background:var(--accent); padding:0 10px; border:3px solid var(--border); border-radius:12px; box-shadow:4px 4px 0 var(--shadow); display:inline-block; transform:rotate(-2deg); }
+  .sub { color:var(--muted); font-size:.85rem; text-align:center; margin:12px 0 20px; }
+
+  .card { background:var(--card); border:3px solid var(--border); border-radius:24px; box-shadow:8px 8px 0 var(--shadow); padding:24px 20px; width:100%; max-width:580px; animation: popIn .5s both; }
+  .setup-card { max-width:540px; }
+  .box { background:var(--soft); border:3px solid var(--border); border-radius:16px; padding:14px; margin-bottom:16px; font-size:.82rem; line-height:1.6; box-shadow:4px 4px 0 var(--shadow); }
+  .box h4 { font-size:.7rem; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; font-weight:900; }
+  .box code { background:var(--accent2); color:#111; padding:1px 6px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:.72rem; border:1.5px solid #111; }
+  .box a { color:inherit; font-weight:800; text-decoration:underline; text-decoration-thickness:2px; }
+
+  label { display:block; font-size:.8rem; font-weight:800; margin-bottom:6px; }
+  input, textarea { width:100%; padding:12px 14px; background:var(--input); color:var(--text); border:3px solid var(--border); border-radius:14px; font-size:.88rem; margin-bottom:14px; transition:transform .15s, box-shadow .15s; }
+  input:focus, textarea:focus { outline:none; transform:translate(-2px,-2px); box-shadow:4px 4px 0 var(--shadow); }
+  .mono { font-family:'JetBrains Mono',monospace; font-size:.78rem; }
+  textarea { font-family:'JetBrains Mono',monospace; font-size:.74rem; resize:vertical; }
+
+  /* ---- Buttons ---- */
+  .btn { width:100%; padding:14px; background:var(--accent); color:var(--text); border:3px solid var(--border); border-radius:16px; font-weight:900; font-size:.95rem; cursor:pointer; box-shadow:5px 5px 0 var(--shadow); transition:transform .12s, box-shadow .12s; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn:hover { transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--shadow); }
+  .btn:active { transform:translate(4px,4px); box-shadow:1px 1px 0 var(--shadow); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:5px 5px 0 var(--shadow); }
+  .btn.yellow { background:var(--accent2); }
+  .btn-sm { width:auto; padding:8px 14px; font-size:.78rem; box-shadow:3px 3px 0 var(--shadow); border-radius:12px; }
+  .btn-sm:hover { box-shadow:4px 4px 0 var(--shadow); }
+  .btn-sm:active { box-shadow:0 0 0 var(--shadow); }
+  .btn-del { background:var(--danger); }
+  .btn-amb { background:#bbf7d0; }
+  .btn-upd { background:#fde68a; }
+  .btn-ghost { background:var(--card); }
+  .spin { display:inline-block; width:16px; height:16px; border:3px solid var(--border); border-top-color:transparent; border-radius:50%; animation: spin .7s linear infinite; }
+
+  .warn { margin-top:14px; background:#fef08a; color:#111; border:3px solid var(--border); border-radius:14px; padding:10px 12px; font-size:.74rem; font-weight:600; line-height:1.5; box-shadow:4px 4px 0 var(--shadow); }
+  .dbg { margin-top:12px; background:#111; color:#e5e7eb; border-radius:14px; padding:12px; font-family:'JetBrains Mono',monospace; font-size:.68rem; max-height:160px; overflow-y:auto; display:none; line-height:1.6; }
+  .dbg.show { display:block; }
+
+  /* ---- Main ---- */
+  #mainApp { display:none; width:100%; max-width:620px; }
+  #mainApp.show { display:block; }
+  .head { text-align:center; margin-bottom:18px; }
+  .head h2 { font-size:1.9rem; font-weight:900; letter-spacing:-1px; display:inline-block; animation: bounceIn .7s both; }
+  .head h2 .hl { background:var(--accent); padding:0 10px; border:3px solid var(--border); border-radius:12px; box-shadow:4px 4px 0 var(--shadow); transform:rotate(-2deg); display:inline-block; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; background:var(--card); border:3px solid var(--border); border-radius:16px; padding:10px 12px; margin-bottom:14px; box-shadow:4px 4px 0 var(--shadow); font-size:.8rem; font-weight:700; }
+  .themes { display:flex; gap:6px; }
+  .theme-btn { width:30px; height:30px; border-radius:50%; border:3px solid var(--border); cursor:pointer; transition:transform .15s; }
+  .theme-btn:hover { transform:scale(1.15) rotate(8deg); }
+  .theme-btn.active { box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--border); }
+  .t-cream { background:#fffbe6; } .t-dark { background:#1e293b; } .t-sky { background:#7dd3fc; }
+  .info { background:var(--accent); border:3px solid var(--border); border-radius:14px; padding:8px 12px; font-size:.74rem; font-weight:800; margin-bottom:16px; box-shadow:3px 3px 0 var(--shadow); }
+
+  .tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+  .tab { background:var(--card); border:3px solid var(--border); border-radius:14px; padding:9px 4px; font-weight:800; font-size:.8rem; color:var(--text); cursor:pointer; font-family:inherit; box-shadow:3px 3px 0 var(--shadow); transition:all .15s; }
+  .tab:hover { transform:translate(-1px,-1px); }
+  .tab.active { background:var(--accent2); transform:translate(2px,2px); box-shadow:1px 1px 0 var(--shadow); }
+  .drop { position:relative; border:3px dashed var(--border); background:var(--soft); border-radius:16px; padding:20px; text-align:center; font-size:.85rem; font-weight:700; margin-bottom:14px; transition:transform .15s, background .15s; }
+  .drop:hover { transform:scale(1.01); background:var(--accent); }
+  .drop input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; margin:0; padding:0; border:0; }
+  .drop .hint { font-size:.7rem; color:var(--muted); margin-top:4px; font-weight:500; }
+  .chosen { font-size:.74rem; margin-top:6px; font-weight:800; }
+  .prev { font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--muted); margin:-8px 0 14px; word-break:break-all; }
+  .prev span { color:var(--text); font-weight:700; background:var(--accent2); padding:0 4px; border-radius:4px; }
+
+  .log { margin-top:14px; background:#111; color:#e5e7eb; border-radius:14px; padding:12px; font-family:'JetBrains Mono',monospace; font-size:.68rem; line-height:1.8; max-height:220px; overflow-y:auto; display:none; border:3px solid var(--border); }
+  .log.show { display:block; }
+  .log .ok { color:#4ade80; } .log .err { color:#f87171; } .log .info { color:#60a5fa; } .log .big { color:#fde047; font-weight:700; }
+  .log div { animation: slideIn .25s both; }
+  .result { margin-top:14px; padding:14px; border-radius:16px; font-size:.85rem; font-weight:700; text-align:center; word-break:break-all; display:none; border:3px solid var(--border); box-shadow:4px 4px 0 var(--shadow); animation: popIn .4s both; }
+  .result.show { display:block; }
+  .result.ok { background:var(--accent); }
+  .result.bad { background:var(--danger); }
+  .result a { color:inherit; }
+
+  .list-head { display:flex; justify-content:space-between; align-items:center; margin:24px 0 12px; }
+  .list-head h3 { font-size:1.05rem; font-weight:900; }
+  .pcard { background:var(--card); border:3px solid var(--border); border-radius:18px; padding:14px; margin-bottom:12px; box-shadow:5px 5px 0 var(--shadow); animation: popIn .4s both; transition:transform .15s, box-shadow .15s, opacity .4s, height .4s; }
+  .pcard:hover { transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--shadow); }
+  .pcard.removing { opacity:0; transform:scale(.9); }
+  .pname { font-family:'JetBrains Mono',monospace; font-size:.85rem; font-weight:800; word-break:break-all; }
+  .purl { font-size:.7rem; color:var(--muted); font-family:'JetBrains Mono',monospace; margin:4px 0 10px; word-break:break-all; }
+  .purl a { color:var(--text); font-weight:700; }
+  .badges { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .badge { font-size:.62rem; font-weight:900; padding:4px 9px; border:2px solid var(--border); border-radius:8px; }
+  .b-pages { background:var(--accent); } .b-no { background:var(--soft); color:var(--muted); } .b-backup { background:var(--accent2); }
+  .pactions { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .pactions .btn { width:100%; }
+  .empty { text-align:center; color:var(--muted); font-size:.85rem; padding:26px 0; font-weight:700; }
+
+  /* ---- Modal ---- */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:20px; z-index:5000; animation: fadeIn .2s both; }
+  .overlay.show { display:flex; }
+  .modal { background:var(--card); border:3px solid var(--border); border-radius:22px; padding:22px; width:100%; max-width:440px; box-shadow:8px 8px 0 var(--shadow); animation: popIn .35s both; }
+  .modal h3 { font-size:1.2rem; font-weight:900; margin-bottom:8px; text-align:center; }
+  .modal p { font-size:.85rem; color:var(--muted); margin-bottom:14px; line-height:1.5; text-align:center; }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+  .upd-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px; }
+  .upd-tabs button { background:var(--card); border:3px solid var(--border); border-radius:12px; padding:8px; font-weight:800; font-size:.78rem; color:var(--text); cursor:pointer; font-family:inherit; }
+  .upd-tabs button.active { background:var(--accent2); }
+
+  .toast { position:fixed; top:16px; left:12px; right:12px; max-width:420px; margin:0 auto; padding:12px 16px; border:3px solid var(--border); border-radius:14px; background:var(--accent); color:var(--text); font-weight:900; font-size:.85rem; text-align:center; z-index:6000; box-shadow:5px 5px 0 var(--shadow); animation: slideDown .35s both; }
+  .toast.err { background:var(--danger); }
+  .toast.info { background:var(--accent2); }
+  .toast.out { animation: slideUp .3s forwards; }
+
+  .confetti { position:fixed; width:10px; height:14px; z-index:7000; pointer-events:none; border:2px solid #111; animation: fall 1.4s ease-in forwards; }
+
+  @keyframes popIn { from { opacity:0; transform:translateY(18px) scale(.97); } to { opacity:1; transform:none; } }
+  @keyframes bounceIn { 0% { opacity:0; transform:scale(.6); } 60% { transform:scale(1.06); } 100% { opacity:1; transform:scale(1); } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-24px); } to { opacity:1; transform:none; } }
+  @keyframes slideUp { to { opacity:0; transform:translateY(-24px); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes fadeOut { to { opacity:0; visibility:hidden; } }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes fall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(110vh) rotate(720deg); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
+</style>
+</head>
+<body data-theme="cream">
+
+<!-- SETUP -->
+<div id="setupScreen">
+  <div style="width:100%;max-width:560px">
+    <div class="title-big">GOGO <span class="hl">Pages</span></div>
+    <p class="sub">Sekali setup, langsung deploy</p>
+    <div class="card setup-card">
+      <div class="box">
+        <h4>Cara dapetin token</h4>
+        1. Buka <a href="https://github.com/settings/tokens/new?scopes=repo,delete_repo&description=GOGO%20Pages" target="_blank" rel="noopener">github.com/settings/tokens/new</a> (token classic)<br>
+        2. Expiration: pilih <code>90 days</code><br>
+        3. Centang scope <code>repo</code> dan <code>delete_repo</code><br>
+        4. Generate token, copy, paste di bawah
+      </div>
+      <label for="tokenInput">Token GitHub</label>
+      <input type="password" id="tokenInput" class="mono" placeholder="ghp_xxxxxxxx" autocomplete="off" spellcheck="false">
+      <button class="btn" id="setupBtn" onclick="saveToken()">Simpan &amp; Mulai</button>
+      <div class="warn">Token disimpen di <b>localStorage browser</b> lu aja. Token cuma dikirim ke api.github.com.</div>
+      <div class="dbg" id="dbgBox"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="mainApp">
+  <div class="head"><h2><span class="hl">GOGO</span> Pages</h2></div>
+
+  <div class="topbar">
+    <span>Login: <b id="userName">...</b></span>
+    <div class="themes">
+      <button class="theme-btn t-cream" title="Cream" onclick="setTheme('cream')"></button>
+      <button class="theme-btn t-dark" title="Dark" onclick="setTheme('dark')"></button>
+      <button class="theme-btn t-sky" title="Sky" onclick="setTheme('sky')"></button>
+    </div>
+    <button class="btn btn-sm btn-del" onclick="askLogout()">Ganti Token</button>
+  </div>
+
+  <div class="card">
+    <div class="info" id="storageText">IndexedDB ready</div>
+
+    <label for="projectName">Nama Project (jadi nama repo)</label>
+    <input type="text" id="projectName" placeholder="contoh: web-saya" autocomplete="off">
+    <div class="prev" id="urlPrev">URL: <span>...</span></div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabPaste" onclick="switchMode('paste')">Paste</button>
+      <button class="tab" id="tabFile" onclick="switchMode('file')">HTML</button>
+      <button class="tab" id="tabZip" onclick="switchMode('zip')">ZIP</button>
+    </div>
+    <div id="grpPaste"><textarea id="htmlCode" rows="7" placeholder="<!DOCTYPE html>..."></textarea></div>
+    <div id="grpFile" class="hide"><div class="drop"><input type="file" id="fileInput" accept=".html,.htm">Tap atau pilih index.html<div class="hint">Bisa drag &amp; drop</div><div class="chosen" id="fileName"></div></div></div>
+    <div id="grpZip" class="hide"><div class="drop"><input type="file" id="zipInput" accept=".zip">Tap atau pilih file .zip<div class="hint">Wajib ada index.html di root zip</div><div class="chosen" id="zipName"></div></div></div>
+
+    <button class="btn yellow" id="btnDeploy" onclick="handleDeploy()"><span id="btnText">Deploy ke GitHub Pages</span></button>
+
+    <div class="log" id="logBox"></div>
+    <div class="result" id="resultBox"></div>
+  </div>
+
+  <div class="list-head">
+    <h3>Daftar Repo</h3>
+    <button class="btn btn-sm btn-ghost" onclick="loadProjects()">Refresh</button>
+  </div>
+  <div id="projectList"><div class="empty">Memuat...</div></div>
+</div>
+
+<!-- CONFIRM -->
+<div class="overlay" id="confirmModal">
+  <div class="modal">
+    <h3 id="confirmTitle">Konfirmasi</h3>
+    <p id="confirmDesc"></p>
+    <div class="row">
+      <button class="btn btn-sm btn-ghost" style="padding:12px" onclick="closeConfirm(false)">Batal</button>
+      <button class="btn btn-sm btn-del" style="padding:12px" id="confirmOk" onclick="closeConfirm(true)">Oke</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPDATE -->
+<div class="overlay" id="updateModal">
+  <div class="modal">
+    <h3>Update Repo</h3>
+    <p>Update <b id="updName"></b>. File dengan nama sama bakal ditimpa.</p>
+    <div class="upd-tabs">
+      <button class="active" id="uTabPaste" onclick="switchUpdMode('paste')">Paste</button>
+      <button id="uTabFile" onclick="switchUpdMode('file')">HTML</button>
+      <button id="uTabZip" onclick="switchUpdMode('zip')">ZIP</button>
+    </div>
+    <div id="uGrpPaste"><textarea id="updHtml" rows="6"></textarea></div>
+    <div id="uGrpFile" class="hide"><input type="file" id="updFile" accept=".html,.htm"></div>
+    <div id="uGrpZip" class="hide"><input type="file" id="updZip" accept=".zip"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn btn-sm btn-ghost" style="padding:12px" onclick="closeUpdate()">Batal</button>
+      <button class="btn" style="padding:12px" onclick="confirmUpdate()">Update</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ============ CONFIG ============
+const GH = 'https://api.github.com';
+const KEY = 'gogo_gh_v1';
+const THEME_KEY = 'gogo_gh_theme';
+const DB_NAME = 'gogo_gh_backup_db';
+const DB_VER = 1;
+const STORE = 'projects';
+
+let cfg = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
+let db = null;
+let mode = 'paste', updMode = 'paste', updTarget = '';
+
+// ============ THEME ============
+function setTheme(t) {
+  document.body.dataset.theme = t;
+  localStorage.setItem(THEME_KEY, t);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.classList.contains('t-' + t)));
+}
+setTheme(localStorage.getItem(THEME_KEY) || 'cream');
+
+// ============ INDEXEDDB ============
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, DB_VER);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE, { keyPath: 'projectName' });
+    };
+    r.onsuccess = e => { db = e.target.result; res(db); };
+    r.onerror = e => rej(e.target.error);
+  });
+}
+function dbPut(name, data) {
+  return new Promise((res, rej) => {
+    const req = db.transaction(STORE, 'readwrite').objectStore(STORE).put({
+      projectName: name, type: data.type, htmlContent: data.htmlContent || null,
+      zipBlob: data.zipBlob || null, timestamp: Date.now()
+    });
+    req.onsuccess = () => res(true); req.onerror = () => rej(req.error);
+  });
+}
+function dbGet(name) {
+  return new Promise(res => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(name);
+    req.onsuccess = () => res(req.result || null); req.onerror = () => res(null);
+  });
+}
+function dbGetAll() {
+  return new Promise(res => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+    req.onsuccess = () => res(req.result || []); req.onerror = () => res([]);
+  });
+}
+function dbDelete(name) {
+  return new Promise(res => {
+    const req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(name);
+    req.onsuccess = () => res(true); req.onerror = () => res(false);
+  });
+}
+
+// ============ UI HELPERS ============
+function toast(msg, type = 'ok') {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'err' ? ' err' : type === 'info' ? ' info' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3300);
+}
+function confetti() {
+  const colors = ['#86efac', '#facc15', '#7dd3fc', '#fca5a5', '#fff'];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random() * .3) + 's';
+    c.style.transform = `rotate(${Math.random() * 360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 2000);
+  }
+}
+function dbg(type, msg) {
+  const box = document.getElementById('dbgBox');
+  box.classList.add('show');
+  const line = document.createElement('div');
+  line.style.color = type === 'err' ? '#f87171' : type === 'ok' ? '#4ade80' : '#60a5fa';
+  line.textContent = `[${new Date().toLocaleTimeString('id-ID', { hour12: false })}] ${msg}`;
+  box.appendChild(line);
+}
+const logBox = document.getElementById('logBox');
+function log(type, msg) {
+  logBox.classList.add('show');
+  const d = document.createElement('div');
+  d.className = type; d.textContent = '› ' + msg;
+  logBox.appendChild(d);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+function clearLog() { logBox.innerHTML = ''; }
+function setResult(ok, html) {
+  const r = document.getElementById('resultBox');
+  r.className = 'result show ' + (ok ? 'ok' : 'bad');
+  r.innerHTML = html;
+}
+function cleanName(s) {
+  return s.trim().toLowerCase().replace(/[^a-z0-9-_.]/g, '-').replace(/^-+|-+$/g, '').slice(0, 100);
+}
+function pagesUrl(name) { return `https://${cfg.login}.github.io/${name}/`; }
+function updatePreview() {
+  const n = cleanName(document.getElementById('projectName').value);
+  document.getElementById('urlPrev').innerHTML = n && cfg.login
+    ? `URL: <span>${pagesUrl(n)}</span>` : 'URL: <span>...</span>';
+}
+function switchMode(m) {
+  mode = m;
+  ['paste', 'file', 'zip'].forEach(x => {
+    document.getElementById('tab' + cap(x)).classList.toggle('active', x === m);
+    document.getElementById('grp' + cap(x)).classList.toggle('hide', x !== m);
+  });
+}
+function switchUpdMode(m) {
+  updMode = m;
+  ['paste', 'file', 'zip'].forEach(x => {
+    document.getElementById('uTab' + cap(x)).classList.toggle('active', x === m);
+    document.getElementById('uGrp' + cap(x)).classList.toggle('hide', x !== m);
+  });
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ============ CONFIRM ============
+let confirmResolve = null;
+function showConfirm(title, desc, okText) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmDesc').innerHTML = desc;
+  document.getElementById('confirmOk').textContent = okText;
+  document.getElementById('confirmModal').classList.add('show');
+  return new Promise(r => confirmResolve = r);
+}
+function closeConfirm(v) {
+  document.getElementById('confirmModal').classList.remove('show');
+  if (confirmResolve) { confirmResolve(v); confirmResolve = null; }
+}
+async function askLogout() {
+  if (await showConfirm('Ganti Token?', 'Token dihapus dari browser. Repo di GitHub dan backup tetep aman.', 'Ya, ganti')) {
+    localStorage.removeItem(KEY);
+    cfg = {};
+    document.getElementById('tokenInput').value = '';
+    document.getElementById('setupScreen').classList.remove('hide');
+    document.getElementById('mainApp').classList.remove('show');
+  }
+}
+
+// ============ GITHUB API ============
+async function gh(path, opts = {}) {
+  const headers = Object.assign({
+    'Authorization': 'Bearer ' + cfg.token,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  }, opts.headers || {});
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const sep = path.includes('?') ? '&' : '?';
+  const url = GH + path + (opts.method && opts.method !== 'GET' ? '' : sep + '_=' + Date.now());
+  const res = await fetch(url, { ...opts, headers, cache: 'no-store' });
+  let json = null;
+  try { json = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const err = new Error(json?.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return json;
+}
+async function ghExists(path) {
+  try { await gh(path); return true; } catch (e) { if (e.status === 404) return false; throw e; }
+}
+function bytesToBase64(bytes) {
+  let bin = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  }
+  return btoa(bin);
+}
+function readText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result.replace(/^\uFEFF/, ''));
+    r.onerror = rej; r.readAsText(file, 'UTF-8');
+  });
+}
+function readBuf(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej; r.readAsArrayBuffer(file);
+  });
+}
+
+// ============ SETUP ============
+async function saveToken() {
+  const token = document.getElementById('tokenInput').value.trim();
+  const btn = document.getElementById('setupBtn');
+  document.getElementById('dbgBox').innerHTML = '';
+  if (!token) { toast('Token kosong', 'err'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Verifying...';
+  try {
+    cfg = { token };
+    const user = await gh('/user');
+    cfg.login = user.login;
+    localStorage.setItem(KEY, JSON.stringify(cfg));
+    dbg('ok', `Login sebagai @${user.login}`);
+    toast('Token valid! 🎉', 'ok');
+    confetti();
+    const s = document.getElementById('setupScreen');
+    s.classList.add('leaving');
+    setTimeout(startApp, 400);
+  } catch (e) {
+    dbg('err', e.message);
+    toast('Token nggak valid: ' + e.message, 'err');
+    cfg = {};
+    btn.disabled = false; btn.textContent = 'Simpan & Mulai';
+  }
+}
+
+async function startApp() {
+  const s = document.getElementById('setupScreen');
+  s.classList.add('hide');
+  s.classList.remove('leaving');
+  document.getElementById('mainApp').classList.add('show');
+  document.getElementById('userName').textContent = '@' + cfg.login;
+  updatePreview();
+  updateStorageInfo();
+  loadProjects();
+}
+
+async function updateStorageInfo() {
+  const all = await dbGetAll();
+  let size = 0;
+  all.forEach(p => {
+    if (p.htmlContent) size += new Blob([p.htmlContent]).size;
+    if (p.zipBlob) size += p.zipBlob.size;
+  });
+  document.getElementById('storageText').textContent = `IndexedDB ready — ${all.length} backup (${fmt(size)})`;
+}
+function fmt(b) {
+  if (!b || b < 1024) return (b || 0) + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+// ============ PREP INPUT ============
+async function prepare(type, src) {
+  if (type === 'paste') {
+    if (!src.text.trim()) throw new Error('Kode kosong!');
+    return { files: [{ path: 'index.html', bytes: new TextEncoder().encode(src.text) }], backup: { type: 'html', htmlContent: src.text } };
+  }
+  if (type === 'file') {
+    if (!src.file) throw new Error('Pilih file dulu!');
+    const txt = await readText(src.file);
+    return { files: [{ path: 'index.html', bytes: new TextEncoder().encode(txt) }], backup: { type: 'html', htmlContent: txt } };
+  }
+  if (!src.file) throw new Error('Pilih ZIP dulu!');
+  if (typeof JSZip === 'undefined') throw new Error('JSZip nggak ke-load');
+  const zip = await JSZip.loadAsync(src.file);
+  const files = [];
+  for (const [path, obj] of Object.entries(zip.files)) {
+    if (obj.dir || path.includes('__MACOSX') || path.split('/').some(s => s.startsWith('.'))) continue;
+    files.push({ path, bytes: await obj.async('uint8array') });
+  }
+  if (!files.some(f => f.path === 'index.html')) throw new Error('ZIP harus punya index.html di root');
+  const buf = await readBuf(src.file);
+  return { files, backup: { type: 'zip', zipBlob: new Blob([buf], { type: 'application/zip' }) } };
+}
+
+// ============ PUSH & PAGES ============
+async function pushFiles(repo, files) {
+  const base = `/repos/${cfg.login}/${repo}/contents/`;
+  for (const f of files) {
+    const path = f.path.replace(/^\/+/, '');
+    let sha = null;
+    try {
+      const existing = await gh(base + encodeURI(path) + '?ref=main');
+      sha = existing.sha;
+    } catch (e) { if (e.status !== 404) throw e; }
+    log('info', `Upload ${path}${sha ? ' (update)' : ''}`);
+    const body = { message: sha ? `Update ${path}` : `Add ${path}`, content: bytesToBase64(f.bytes), branch: 'main' };
+    if (sha) body.sha = sha;
+    await gh(base + encodeURI(path), { method: 'PUT', body: JSON.stringify(body) });
+  }
+}
+async function ensureRepo(repo) {
+  const exists = await ghExists(`/repos/${cfg.login}/${repo}`);
+  if (exists) { log('ok', 'Repo sudah ada, dipakai ulang'); return; }
+  log('info', 'Bikin repo baru...');
+  await gh('/user/repos', {
+    method: 'POST',
+    body: JSON.stringify({ name: repo, description: 'Dibuat via GOGO GitHub Pages Deployer', private: false, auto_init: true })
+  });
+  await new Promise(r => setTimeout(r, 2000));
+  log('ok', 'Repo dibuat');
+}
+async function enablePages(repo) {
+  const exists = await ghExists(`/repos/${cfg.login}/${repo}/pages`);
+  if (exists) { log('ok', 'GitHub Pages udah aktif'); return; }
+  log('info', 'Aktifin GitHub Pages...');
+  await gh(`/repos/${cfg.login}/${repo}/pages`, {
+    method: 'POST',
+    body: JSON.stringify({ source: { branch: 'main', path: '/' } })
+  });
+  log('ok', 'Pages aktif (1-2 menit buat online)');
+}
+async function deployRepo(repo, files) {
+  await ensureRepo(repo);
+  await pushFiles(repo, files);
+  await enablePages(repo);
+  return pagesUrl(repo);
+}
+
+// ============ DEPLOY ============
+async function handleDeploy() {
+  const name = cleanName(document.getElementById('projectName').value);
+  if (!name) { toast('Nama project wajib diisi!', 'err'); return; }
+  const btn = document.getElementById('btnDeploy');
+  const btnText = document.getElementById('btnText');
+  btn.disabled = true; btnText.innerHTML = '<span class="spin"></span> Memproses...';
+  document.getElementById('resultBox').className = 'result';
+  clearLog();
+  log('info', `Repo: ${name}`);
+  try {
+    const src = {
+      text: document.getElementById('htmlCode').value,
+      file: mode === 'file' ? document.getElementById('fileInput').files[0] : document.getElementById('zipInput').files[0]
+    };
+    const { files, backup } = await prepare(mode, src);
+    const url = await deployRepo(name, files);
+    await dbPut(name, backup);
+    log('big', '=== SELESAI ===');
+    setResult(true, `🎉 Berhasil!<br><a href="${url}" target="_blank">${url}</a><br><small>Kalau belum kebuka, tunggu 1-2 menit lalu refresh.</small>`);
+    toast('Deploy berhasil! 🎉', 'ok');
+    confetti();
+    updateStorageInfo();
+    loadProjects();
+  } catch (e) {
+    log('err', e.message);
+    setResult(false, esc(e.message));
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false; btnText.textContent = 'Deploy ke GitHub Pages';
+  }
+}
+
+// ============ LIST ============
+async function loadProjects() {
+  const el = document.getElementById('projectList');
+  if (!cfg.token || !cfg.login) return;
+  el.innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  try {
+    const [repos, backups] = await Promise.all([
+      gh('/user/repos?sort=updated&per_page=50&affiliation=owner'),
+      dbGetAll()
+    ]);
+    const map = {};
+    backups.forEach(b => map[b.projectName] = b);
+    const mine = repos.filter(r => r.name !== `${cfg.login}.github.io`);
+    if (!mine.length) { el.innerHTML = '<div class="empty">Belum ada repo 🥲</div>'; return; }
+    el.innerHTML = mine.map((r, i) => {
+      const b = map[r.name];
+      const pagesBadge = r.has_pages ? '<span class="badge b-pages">Pages Aktif</span>' : '<span class="badge b-no">Pages Mati</span>';
+      const backupBadge = b ? '<span class="badge b-backup">Backup Ada</span>' : '';
+      const url = pagesUrl(r.name);
+      return `
+        <div class="pcard" id="card-${esc(r.name)}" style="animation-delay:${i * 0.05}s">
+          <div class="pname">${esc(r.name)}</div>
+          <div class="purl"><a href="${url}" target="_blank">${url}</a></div>
+          <div class="badges">${pagesBadge}${backupBadge}</div>
+          <div class="pactions">
+            ${b ? `<button class="btn btn-sm btn-amb" onclick="downloadBackup('${esc(r.name)}')">Ambil</button>` : '<span></span>'}
+            <button class="btn btn-sm btn-upd" onclick="openUpdate('${esc(r.name)}')">Update</button>
+            <button class="btn btn-sm btn-del" onclick="askDelete('${esc(r.name)}')">Hapus</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function downloadBackup(name) {
+  const b = await dbGet(name);
+  if (!b) { toast('Backup nggak ditemukan', 'err'); return; }
+  let blob, filename;
+  if (b.type === 'zip' && b.zipBlob) { blob = b.zipBlob; filename = name + '.zip'; }
+  else if (b.htmlContent) { blob = new Blob([b.htmlContent], { type: 'text/html;charset=utf-8' }); filename = 'index.html'; }
+  else { toast('Backup kosong', 'err'); return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ============ UPDATE ============
+function openUpdate(name) {
+  updTarget = name;
+  document.getElementById('updName').textContent = name;
+  document.getElementById('updHtml').value = '';
+  document.getElementById('updFile').value = '';
+  document.getElementById('updZip').value = '';
+  switchUpdMode('paste');
+  document.getElementById('updateModal').classList.add('show');
+}
+function closeUpdate() {
+  document.getElementById('updateModal').classList.remove('show');
+  updTarget = '';
+}
+async function confirmUpdate() {
+  const name = updTarget;
+  closeUpdate();
+  clearLog();
+  log('info', `Update: ${name}`);
+  try {
+    const src = {
+      text: document.getElementById('updHtml').value,
+      file: updMode === 'file' ? document.getElementById('updFile').files[0] : document.getElementById('updZip').files[0]
+    };
+    const { files, backup } = await prepare(updMode, src);
+    await pushFiles(name, files);
+    await dbPut(name, backup);
+    const url = pagesUrl(name);
+    log('big', '=== UPDATE SELESAI ===');
+    setResult(true, `🎉 Update berhasil!<br><a href="${url}" target="_blank">${url}</a><br><small>Pages butuh 1-2 menit buat nampilin perubahan.</small>`);
+    toast('Update berhasil! 🎉', 'ok');
+    confetti();
+    updateStorageInfo();
+    loadProjects();
+  } catch (e) {
+    log('err', e.message);
+    toast(e.message, 'err');
+  }
+}
+
+// ============ DELETE (dengan verifikasi) ============
+async function askDelete(name) {
+  if (!await showConfirm('Hapus Repo?', `Yakin hapus <b>${esc(name)}</b>? Repo di GitHub dan backup bakal <b>dihapus permanen</b>.`, 'Ya, hapus')) return;
+  try {
+    await gh(`/repos/${cfg.login}/${name}`, { method: 'DELETE' });
+    // verifikasi: GitHub kadang butuh beberapa detik
+    let gone = false;
+    for (let i = 0; i < 4 && !gone; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      gone = !(await ghExists(`/repos/${cfg.login}/${name}`));
+    }
+    if (!gone) throw new Error('Repo masih ada. Cek token punya scope delete_repo.');
+    await dbDelete(name);
+    const card = document.getElementById('card-' + name);
+    if (card) {
+      card.classList.add('removing');
+      setTimeout(() => card.remove(), 400);
+    }
+    toast(`${name} dihapus`, 'ok');
+    updateStorageInfo();
+  } catch (e) {
+    toast('Gagal hapus: ' + e.message, 'err');
+    loadProjects();
+  }
+}
+
+// ============ INIT ============
+document.getElementById('fileInput').addEventListener('change', function () {
+  document.getElementById('fileName').textContent = this.files[0] ? this.files[0].name : '';
+});
+document.getElementById('zipInput').addEventListener('change', function () {
+  document.getElementById('zipName').textContent = this.files[0] ? this.files[0].name : '';
+});
+document.getElementById('projectName').addEventListener('input', updatePreview);
+document.getElementById('tokenInput').addEventListener('keypress', e => { if (e.key === 'Enter') saveToken(); });
+
+(async () => {
+  try { await openDB(); } catch (e) { console.error(e); }
+  if (cfg.token && cfg.login) startApp();
+})();
+</script>
+</body>
+</html>
